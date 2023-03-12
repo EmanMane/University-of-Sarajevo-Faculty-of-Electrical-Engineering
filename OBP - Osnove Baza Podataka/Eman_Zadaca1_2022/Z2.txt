@@ -1,0 +1,99 @@
+--1.
+SELECT  k.naziv Kontinent,
+        Decode(d.naziv,NULL,'Nema drzave',d.naziv) AS Drzava,
+        Decode(g.naziv,NULL,'Nema grada',g.naziv) AS Grad
+FROM  Kontinent k, Grad g, Drzava d
+WHERE k.kontinent_id=d.kontinent_id(+) AND
+      d.drzava_id=g.drzava_id(+);
+
+--2.
+SELECT distinct pl.naziv AS naziv
+FROM pravno_lice pl,
+     ugovor_za_pravno_lice uzpl
+WHERE pl.pravno_lice_id=uzpl.pravno_lice_id AND
+      uzpl.datum_potpisivanja BETWEEN To_Date('2014','yyyy') AND To_Date('2016','yyyy');
+
+--3.
+SELECT  d.naziv AS Drzava,
+        p.naziv AS Proizvod,
+        k.kolicina_proizvoda AS Kolicina_proizvoda
+FROM drzava d, grad g, lokacija l, skladiste s, proizvod p, kolicina k
+WHERE d.drzava_id=g.drzava_id AND
+      g.grad_id=l.grad_id AND
+      l.lokacija_id=s.lokacija_id AND
+      s.skladiste_id=k.skladiste_id AND
+      p.proizvod_id=k.proizvod_id AND
+      k.kolicina_proizvoda>50 AND
+      d.naziv NOT LIKE '%ss%';
+
+--4.
+SELECT DISTINCT p.naziv, p.broj_mjeseci_garancije
+FROM proizvod p,
+     popust pp,
+     narudzba_proizvoda np
+WHERE p.proizvod_id=np.proizvod_id AND
+      np.popust_id=pp.popust_id AND
+      Mod(p.broj_mjeseci_garancije,3)=0 AND
+      pp.postotak IS NOT NULL;
+
+--5.
+SELECT f.ime || ' ' || f.prezime AS "ime i prezime",
+       o.naziv AS "Naziv odjela",
+       19125 AS Indeks
+FROM uposlenik u, odjel o, fizicko_lice f, kupac k
+WHERE u.uposlenik_id=f.fizicko_lice_id AND
+      k.kupac_id=f.fizicko_lice_id AND
+      u.odjel_id=o.odjel_id AND
+      k.kupac_id!=o.sef_id;
+
+--6.
+SELECT np.narudzba_id AS Narudzba_id,
+       p.cijena AS Cijena,
+       Decode(pp.postotak,NULL,0,postotak) AS Postotak,
+       Decode(pp.postotak,NULL,0,postotak)/100 AS PostotakRealni
+FROM proizvod p, narudzba_proizvoda np, popust pp
+WHERE p.proizvod_id=np.proizvod_id AND
+      np.popust_id=pp.popust_id(+) AND
+      p.cijena*Decode(pp.postotak,NULL,0,pp.postotak)/100<200;
+
+--7.
+SELECT
+Decode(k.kategorija_id,
+       NULL,'nema kategorije',
+       1,'Komp Oprema',
+       k.naziv) "Kategorija" ,
+Decode(n.kategorija_id,
+       NULL,'Nema Kategorije',
+       1,'Komp Oprema',
+       n.naziv) "Nadkategorija"
+ FROM kategorija k, kategorija n
+ WHERE k.nadkategorija_id = n.kategorija_id(+);
+
+
+--8.
+SELECT Trunc(Months_Between(To_Date('10.10.2020','dd.mm.yyyy'),datum_potpisivanja)/12) AS Godina,
+       Mod(Round(Months_Between(To_Date('10.10.2020','dd.mm.yyyy'),datum_potpisivanja)),12) AS Mjeseci,
+       Abs(10-To_Number(To_Char(datum_potpisivanja,'dd'))) AS Dana
+FROM ugovor_za_pravno_lice
+WHERE Round(Months_Between(To_Date('10.10.2020','dd.mm.yyyy'),datum_potpisivanja)/12)>SubStr(CAST(ugovor_id AS VARCHAR(50)),1,2);
+
+--9.
+SELECT f.ime, f.prezime,
+       Decode(o.naziv,'Management','Manager','Human Resources','Human','Other') AS odjel,
+       o.odjel_id AS odjel_id
+FROM fizicko_lice f, odjel o, uposlenik u
+WHERE f.fizicko_lice_id=u.uposlenik_id AND
+      u.odjel_id=o.odjel_id
+ORDER BY f.ime ASC, f.prezime DESC;
+
+--10.
+SELECT DISTINCT k.naziv,
+       ps.cijena+pj.cijena AS ZCijena,
+       pj.naziv AS Najjeftiniji,
+       ps.naziv AS Najskuplji
+FROM kategorija k, proizvod ps, proizvod pj
+WHERE k.kategorija_id=ps.kategorija_id AND
+      k.kategorija_id=pj.kategorija_id AND
+      pj.cijena=(SELECT Min(p1.cijena) FROM proizvod p1 WHERE k.kategorija_id=p1.kategorija_id) AND
+      ps.cijena=(SELECT Max(p2.cijena) FROM proizvod p2 WHERE k.kategorija_id=p2.kategorija_id)
+ORDER BY ZCijena;
